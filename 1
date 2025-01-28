@@ -1,0 +1,130 @@
+!pip install -U pysr
+import pandas as pd
+import os
+
+def read_csv_to_numpy(file_path):
+    try:
+        # Specify the encoding explicitly to avoid UnicodeDecodeError
+        data = pd.read_csv(file_path, header=1, encoding="UTF-8").dropna()
+        return data
+    except Exception as e:
+        print(f"Failed to read {file_path} due to {e}")
+        return pd.DataFrame()  # Return empty DataFrame on failure
+
+def load_data(file_names, data_path):
+    file_paths = [os.path.join(data_path, name) for name in file_names]
+    data_frames = [read_csv_to_numpy(path) for path in file_paths]
+    return pd.concat(data_frames, ignore_index=True) if data_frames else pd.DataFrame()
+
+# Example Usage:
+# Update the path to your actual data directory
+caljetData_path = "/Users/kevin/PSUresearch/2025PSUresearch/calijetDatacsv"
+data = load_data([
+    "0.1Ma_test1.csv", "0.1Ma_test2.csv", "0.1Ma_test3.csv",
+    "0.1Ma_test4.csv", "0.1Ma_test5.csv", "0.1Ma_test6.csv",
+    "0.1Ma_test7.csv", "0.1Ma_test8.csv", "0.1Ma_test9.csv",
+    "0.1Ma_test10.csv"
+], caljetData_path)
+
+if data.empty:
+    print("No data loaded. Exiting.")
+else:
+    # Extract necessary columns
+    X = data.iloc[:, :3].to_numpy()  # Input Variables: Pitch, Yaw, Velocity
+    pit = X[:, 0]  # Input Variable: Pitch
+    yaw = X[:, 1]  # Input Variable: Yaw
+    in_u = X[:, 2]  # Input Variable: Velocity
+    y = data.iloc[:, 9].to_numpy()  # Assuming column 10 is Target Variable (Output): Pressure
+
+    print("Data loaded successfully!")
+    print("X shape:", X.shape)
+    print("y shape:", y.shape)
+
+#Specify the data path
+y_truepath = '/Users/kevin/PSUresearch/2025PSUresearch/calijetDatacsv'
+
+#Load y_true val
+data = load_data([
+    "averaged_0.1Ma.csv"
+], y_truepath)
+
+if data.empty:
+    print("No data loaded. Exiting.")
+else:
+    # Extract necessary columns
+    Press = data.iloc[:, :8].to_numpy()  # Input Variable: Pitch, Yaw, Velocity
+    p1 = X[:, 3]
+    p2 = X[:, 4]
+    p3 = X[:, 5]
+    p4 = X[:, 6]
+    p5 = X[:, 7]
+    pavg = X[:, 8]
+    pstatic = X[:, 9]
+    pstag = X[:, 10]
+ 
+    y = data.iloc[:, 11].to_numpy()   # Assuming column 10 is Target Variable (Output): Pressure   
+# Example use case: Train a symbolic regression model
+model = PySRRegressor(
+    model_selection='best',
+    unary_operators=["cos", "sin", "square", "inv(x) = 1/x", "exp"],
+    binary_operators=["+", "-", "/", "*"],
+    extra_sympy_mappings={"inv": lambda x: 1/x},
+    niterations=400,
+    populations=30
+)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+model.fit(X_train, y_train)
+#model.get_best().equation
+print(model.equations_)
+def elementwise_loss(y_true, y_pred):
+
+    # Convert inputs to numpy arrays
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    # Element-wise squared error
+    squared_error = (y_true - y_pred) ** 2
+
+    # Element-wise absolute error
+    absolute_error = np.abs(y_true - y_pred)
+
+    # MSE: mean of squared_error over axis=0
+    mse = np.mean(squared_error, axis=0)
+
+    # RMSE: square root of MSE
+    rmse = np.sqrt(mse)
+
+    # MAE: mean of absolute_error
+    mae = np.mean(absolute_error, axis=0)
+
+    # Scatter loss: Logarithmic scaled error
+    # (use small epsilon for numerical stability)
+    epsilon = 1e-20
+    scatter_loss = np.abs(np.log((np.abs(y_pred) + epsilon) / (np.abs(y_true) + epsilon)))
+
+    # Sign loss: Penalize differences in signs
+    sign_loss = 10 * (np.sign(y_pred) - np.sign(y_true)) ** 2
+
+    # Combined loss: sum of scatter_loss and sign_loss
+    combined_loss = scatter_loss + sign_loss
+
+    # Return a dictionary of metrics
+    return {
+        "MSE": mse,
+        "RMSE": rmse,
+        "MAE": mae,
+        "Scatter Loss": np.mean(scatter_loss),
+        "Sign Loss": np.mean(sign_loss),
+        "Combined Loss": np.mean(combined_loss)
+    }
+
+
+
+y_pred = 
+
+#Call the function
+losses = elementwise_loss(y_true, y_pred)
+
+#Print out the results
+print("Element-wise Losses:")
+for key, value in losses.items():
